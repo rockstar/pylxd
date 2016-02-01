@@ -11,7 +11,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
+import copy
 import json
 
 from pylxd import base
@@ -204,3 +204,86 @@ class LXDContainer(base.LXDBase):
         return self.connection.get_object('DELETE',
                                           '/1.0/containers/%s/snapshots/%s'
                                           % (container, snapshot))
+
+
+def wait_for_operation(operation):
+    """Wait for an asynchronous operation to complete."""
+    from pylxd.api import LXD  # Circular imports...
+    lxd = LXD('http+unix://%2Fvar%2Flib%2Flxd%2Funix.socket')
+
+    operation_uuid = operation.split('/')[-1]
+    lxd['1.0'].operations[operation_uuid].wait.get()
+
+
+class Container(object):
+    """A LXD container object."""
+
+    __slots__ = [
+        'architecture', 'config', 'devices', 'ephemeral', 'expanded_config',
+        'expanded_devices', 'name', 'profiles', 'status'
+        ]
+
+    @classmethod
+    def get(cls, name):
+        """Get a container by its container name."""
+        from pylxd.api import LXD  # Circular imports...
+        lxd = LXD('http+unix://%2Fvar%2Flib%2Flxd%2Funix.socket')
+        response = lxd['1.0'].containers[name].get()
+
+        container = Container()
+        for key, value in response.json()['metadata'].iteritems():
+            setattr(container, key, value)
+        return container
+
+    @classmethod
+    def get_all(cls):
+        """Get all containers on a LXD host as Container objects."""
+        from pylxd.api import LXD  # Circular imports...
+        lxd = LXD('http+unix://%2Fvar%2Flib%2Flxd%2Funix.socket')
+        response = lxd['1.0'].containers.get()
+
+        containers = []
+        for name in response.json()['metadata']:
+            container = Container()
+            container.name = name.split('/')[-1]
+            containers.append(container)
+
+        return containers
+
+    @classmethod
+    def create(cls, name, build_options):
+        """Create a new Container."""
+        from pylxd.api import LXD  # Circular imports...
+        lxd = LXD('http+unix://%2Fvar%2Flib%2Flxd%2Funix.socket')
+        options = copy.deepcopy(build_options)
+        options['name'] = name
+        lxd['1.0'].containers.post(json=options)
+
+        container = cls.get(name)
+        return container
+
+    def update(self, config, wait=False):
+        """Update a Container config."""
+        from pylxd.api import LXD  # Circular imports...
+        lxd = LXD('http+unix://%2Fvar%2Flib%2Flxd%2Funix.socket')
+        response = lxd['1.0'].containers[self.name].put(json={'config': config})
+
+        if wait:
+            wait_for_operation(response.json()['operation'])
+        self.config.update(config)
+
+    def rename(self, name):
+        """Rename a Container."""
+        from pylxd.api import LXD  # Circular imports...
+        lxd = LXD('http+unix://%2Fvar%2Flib%2Flxd%2Funix.socket')
+        lxd['1.0'].containers[self.name].put(json={'name': name})
+        self.name = name
+
+    def delete(self, wait=False):
+        """Delete the container."""
+        from pylxd.api import LXD  # Circular imports...
+        lxd = LXD('http+unix://%2Fvar%2Flib%2Flxd%2Funix.socket')
+        response = lxd['1.0'].containers[self.name].delete()
+
+        if wait:
+            wait_for_operation(response.json()['operation'])

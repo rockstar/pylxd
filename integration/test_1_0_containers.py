@@ -11,36 +11,9 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from pylxd import container
+
 from integration.testing import IntegrationTestCase
-
-
-class Test10Containers(IntegrationTestCase):
-    """Tests for /1.0/containers"""
-
-    def test_1_0_containers(self):
-        """Return: list of URLs for containers this server publishes."""
-        result = self.lxd['1.0']['containers'].get()
-
-        self.assertCommon(result)
-        self.assertEqual(200, result.status_code)
-
-    def test_1_0_containers_POST(self):
-        """Return: background operation or standard error."""
-        name = self.id().split('.')[-1].replace('_', '')
-        machine = {
-            'name': name,
-            'architecture': 2,
-            'profiles': ['default'],
-            'ephemeral': True,
-            'config': {'limits.cpu': '2'},
-            'source': {'type': 'image',
-                       'alias': 'busybox'},
-        }
-        result = self.lxd['1.0']['containers'].post(json=machine)
-        self.addCleanup(self.delete_container, name, enforce=True)
-
-        # self.assertCommon(result)
-        self.assertEqual(202, result.status_code)
 
 
 class ContainerTestCase(IntegrationTestCase):
@@ -53,40 +26,6 @@ class ContainerTestCase(IntegrationTestCase):
     def tearDown(self):
         super(ContainerTestCase, self).tearDown()
         self.delete_container(self.name)
-
-
-class Test10Container(ContainerTestCase):
-    """Tests for /1.0/containers/<name>"""
-
-    def test10container(self):
-        """Return: dict of the container configuration and current state."""
-        result = self.lxd['1.0']['containers'][self.name].get()
-
-        self.assertEqual(200, result.status_code)
-
-    def test10container_put(self):
-        """Return: background operation or standard error."""
-        result = self.lxd['1.0']['containers'][self.name].put(json={
-            'config': {'limits.cpu': '1'}
-            })
-
-        self.assertEqual(202, result.status_code)
-
-    def test10container_post(self):
-        """Return: background operation or standard error."""
-        new_name = 'newname'
-        result = self.lxd['1.0']['containers'][self.name].post(json={
-            'name': new_name,
-            })
-        self.addCleanup(self.delete_container, new_name, enforce=True)
-
-        self.assertEqual(202, result.status_code)
-
-    def test10container_delete(self):
-        """Return: background operation or standard error."""
-        result = self.lxd['1.0']['containers'][self.name].delete()
-
-        self.assertEqual(202, result.status_code)
 
 
 class Test10ContainerState(ContainerTestCase):
@@ -239,3 +178,94 @@ class Test10ContainerLog(ContainerTestCase):
         result = self.lxd['1.0'].containers[self.name].logs[self.log_name].delete()
 
         self.assertEqual(200, result.status_code)
+
+
+class TestContainer(IntegrationTestCase):
+    """Tests for pylxd.container.Container."""
+
+    def test_get_all(self):
+        """Container.get_all returns a list of Container objects."""
+        name = self.create_container()
+        self.addCleanup(self.delete_container, name)
+
+        containers = container.Container.get_all()
+
+        self.assertEqual(1, len(containers))
+        self.assertEqual(name, containers[0].name)
+
+    def test_get(self):
+        """Container.get returns a Container populated with attributes."""
+        name = self.create_container()
+        self.addCleanup(self.delete_container, name)
+
+        an_container = container.Container.get(name)
+
+        self.assertEqual(2, an_container.architecture)
+        self.assertEqual(
+            ['limits.cpu', 'volatile.base_image', 'volatile.eth0.hwaddr',
+             'volatile.eth0.name', 'volatile.last_state.idmap'],
+            sorted(an_container.config.keys()))
+        self.assertEqual({}, an_container.devices)
+        self.assertEqual(True, an_container.ephemeral)
+        self.assertEqual(
+            ['limits.cpu', 'volatile.base_image', 'volatile.eth0.hwaddr',
+             'volatile.eth0.name', 'volatile.last_state.idmap'],
+            sorted(an_container.expanded_config.keys()))
+        self.assertEqual(['eth0'], an_container.expanded_devices.keys())
+        self.assertEqual(name, an_container.name)
+        self.assertEqual(['default'], an_container.profiles)
+        self.assertEqual(
+            ['init', 'ips', 'processcount', 'status', 'status_code'],
+            sorted(an_container.status.keys()))
+
+    def test_create(self):
+        """A Container is created on the machine."""
+        name = 'an-container'
+        self.addCleanup(self.delete_container, name)
+        options = {
+            'architecture': 2,
+            'profiles': ['default'],
+            'ephemeral': True,
+            'config': {'limits.cpu': '2'},
+            'source': {'type': 'image',
+                       'alias': 'busybox'},
+        }
+
+        an_container = container.Container.create(name, options)
+
+        self.assertEqual(name, an_container.name)
+
+    def test_update(self):
+        """An existing Container is updated."""
+        name = self.create_container()
+        self.addCleanup(self.delete_container, name)
+        an_container = container.Container.get(name)
+
+        an_container.update({'limits.cpu': '10'}, wait=True)
+        response = self.lxd['1.0'].containers[name].get()
+
+        self.assertEqual('10', response.json()['metadata']['config']['limits.cpu'])
+
+    def test_rename(self):
+        """An existing Container is renamed."""
+        new_name = 'an-container'
+        name = self.create_container()
+        self.addCleanup(self.delete_container, name)
+        an_container = container.Container.get(name)
+
+        an_container.rename(new_name)
+        self.addCleanup(self.delete_container, new_name)
+        response = self.lxd['1.0'].containers[name].get()
+
+        self.assertEqual(200, response.status_code)
+
+    def test_delete(self):
+        """An existing Container is deleted."""
+        name = self.create_container()
+        self.addCleanup(self.delete_container, name)
+        an_container = container.Container.get(name)
+
+        an_container.delete(wait=True)
+        response = self.lxd['1.0'].containers[name].get()
+
+        self.assertEqual(404, response.status_code)
