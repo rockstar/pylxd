@@ -17,7 +17,7 @@ from integration.testing import IntegrationTestCase
 class Test10Networks(IntegrationTestCase):
     """Tests for /1.0/networks"""
 
-    PARTS = ['1.0', 'networks']
+    PARTS = ['networks']
 
     def test_GET(self):
         """Return: a list of networks that are currently defined on the host."""
@@ -29,7 +29,7 @@ class Test10Networks(IntegrationTestCase):
 class Test10Network(IntegrationTestCase):
     """Tests for /1.0/networks/<name>"""
 
-    PARTS = ['1.0', 'networks']
+    PARTS = ['networks']
 
     def test_GET(self):
         """Return: dict representing the network."""

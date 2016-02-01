@@ -22,6 +22,6 @@ class Test10Events(IntegrationTestCase):
         # XXX: rockstar (14 Jan 2016) - This returns a 400 in pylxd, because
         # websockets. I plan to sort this integration test out later, but nova-lxd
         # does not use websockets, so I'll wait a bit on that.
-        result = self.lxd['1.0']['events'].get(params={'type': 'operation,logging'})
+        result = self.lxd['events'].get(params={'type': 'operation,logging'})
 
         self.assertEqual(400, result.status_code)

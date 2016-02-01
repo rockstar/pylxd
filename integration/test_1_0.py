@@ -19,7 +19,7 @@ class Test10(IntegrationTestCase):
 
     def test_1_0(self):
         """Return: Dict representing server state."""
-        result = self.lxd['1.0'].get()
+        result = self.lxd.get()
 
         self.assertCommon(result)
         self.assertEqual(200, result.status_code)
@@ -34,7 +34,7 @@ class Test10(IntegrationTestCase):
 
     def test_1_0_PUT(self):
         """Return: standard return value or standard error."""
-        result = self.lxd['1.0'].put(json={'config': {'core.trust_password': 'test'}})
+        result = self.lxd.put(json={'config': {'core.trust_password': 'test'}})
 
         self.assertCommon(result)
         self.assertEqual(200, result.status_code)

@@ -12,7 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
 from collections import namedtuple
 import copy
 import json
@@ -20,13 +19,16 @@ import os
 import socket
 import ssl
 import threading
+import urllib
 
-
-from pylxd import exceptions
-from pylxd import utils
+import requests
+import requests_unixsocket
 from six.moves import http_client
 from six.moves import queue
 from ws4py import client as websocket
+
+from pylxd import exceptions
+from pylxd import utils
 
 if hasattr(ssl, 'SSLContext'):
     # For Python >= 2.7.9 and Python 3.x
@@ -212,3 +214,76 @@ class LXDConnection(object):
         ws.connect()
 
         return ws
+
+
+class _APINode(object):
+    """An api node object.
+
+    This class allows us to dynamically create request urls by expressing them
+    in python. For example:
+
+        >>> node = APINode('http://example.com/api')
+        >>> node.users[1].comments.get()
+
+    ...would make an HTTP GET request on
+    http://example.com/api/users/1/comments
+    """
+
+    def __init__(self, api_endpoint):
+        self._api_endpoint = api_endpoint
+
+    def __getattr__(self, name):
+        return self.__class__('{}/{}'.format(self._api_endpoint, name))
+
+    def __getitem__(self, item):
+        return self.__class__('{}/{}'.format(self._api_endpoint, item))
+
+    @property
+    def session(self):
+        if self._api_endpoint.startswith('http+unix://'):
+            return requests_unixsocket.Session()
+        else:
+            return requests
+
+    def get(self, *args, **kwargs):
+        """Perform an HTTP GET."""
+        return self.session.get(self._api_endpoint, *args, **kwargs)
+
+    def post(self, *args, **kwargs):
+        """Perform an HTTP POST."""
+        return self.session.post(self._api_endpoint, *args, **kwargs)
+
+    def put(self, *args, **kwargs):
+        """Perform an HTTP PUT."""
+        return self.session.put(self._api_endpoint, *args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        """Perform an HTTP delete."""
+        return self.session.delete(self._api_endpoint, *args, **kwargs)
+
+
+_LXD = None
+
+
+def LXD(lxd_url=None, api_version='1.0'):
+    """Get a connection to LXD.
+
+    :param: lxd_url - The location of your lxd host.
+    :param: api_version - The version of the API you need.
+    """
+    global _LXD
+
+    if _LXD is not None:
+        return _LXD
+
+    if lxd_url is None:
+        if 'LXD_DIR' in os.environ:
+            lxd_path = urllib.quote(
+                '{}/unix.socket'.format(os.environ.get('LXD_DIR')),
+                safe='')
+        else:
+            lxd_path = urllib.quote('/var/lib/lxd/unix.socket', safe='')
+        lxd_url = 'http+unix://{}'.format(lxd_path)
+
+    _LXD = _APINode(lxd_url)[api_version]
+    return _LXD

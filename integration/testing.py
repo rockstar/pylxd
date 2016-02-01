@@ -14,7 +14,7 @@
 import unittest
 import uuid
 
-from pylxd.api import LXD
+from pylxd.connection import LXD
 from integration.busybox import create_busybox_image
 
 
@@ -25,7 +25,7 @@ class IntegrationTestCase(unittest.TestCase):
 
     def setUp(self):
         super(IntegrationTestCase, self).setUp()
-        self.lxd = self._lxd_root = LXD('http+unix://%2Fvar%2Flib%2Flxd%2Funix.socket')
+        self.lxd = self._lxd_root = LXD()
 
         for part in self.PARTS:
             self.lxd = self.lxd[part]
@@ -42,9 +42,9 @@ class IntegrationTestCase(unittest.TestCase):
             'source': {'type': 'image',
                        'alias': 'busybox'},
         }
-        result = self._lxd_root['1.0']['containers'].post(json=machine)
+        result = self._lxd_root.containers.post(json=machine)
         operation_uuid = result.json()['operation'].split('/')[-1]
-        result = self._lxd_root['1.0'].operations[operation_uuid].wait.get()
+        result = self._lxd_root.operations[operation_uuid].wait.get()
 
         self.addCleanup(self.delete_container, name)
         return name
@@ -54,13 +54,13 @@ class IntegrationTestCase(unittest.TestCase):
         # enforce is a hack. There's a race somewhere in the delete.
         # To ensure we don't get an infinite loop, let's count.
         count = 0
-        result = self._lxd_root['1.0']['containers'][name].delete()
+        result = self._lxd_root.containers[name].delete()
         while enforce and result.status_code == 404 and count < 10:
-            result = self._lxd_root['1.0']['containers'][name].delete()
+            result = self._lxd_root.containers[name].delete()
             count += 1
         try:
             operation_uuid = result.json()['operation'].split('/')[-1]
-            result = self._lxd_root['1.0'].operations[operation_uuid].wait.get()
+            result = self._lxd_root.operations[operation_uuid].wait.get()
         except KeyError:
             pass  # 404 cases are okay.
 
@@ -71,23 +71,23 @@ class IntegrationTestCase(unittest.TestCase):
             headers = {
                 'X-LXD-Public': '1',
                 }
-            response = self._lxd_root['1.0'].images.post(data=f.read(), headers=headers)
+            response = self._lxd_root.images.post(data=f.read(), headers=headers)
         operation_uuid = response.json()['operation'].split('/')[-1]
-        self._lxd_root['1.0'].operations[operation_uuid].wait.get()
+        self._lxd_root.operations[operation_uuid].wait.get()
 
         self.addCleanup(self.delete_image, fingerprint)
         return fingerprint
 
     def delete_image(self, fingerprint):
         """Delete an image in lxd."""
-        self._lxd_root['1.0'].images[fingerprint].delete()
+        self._lxd_root.images[fingerprint].delete()
 
     def create_alias(self, fingerprint):
         # XXX: rockstar (31 Jan 2016) - it's possible we'll have to delete these,
         # thaugh if the image deletion doesn't also delete aliases, that would
         # be very odd indeed.
         alias = str(uuid.uuid4()).split('-')[0]
-        self._lxd_root['1.0'].images.aliases.post(json={
+        self._lxd_root.images.aliases.post(json={
             'target': fingerprint,
             'name': alias
             })
@@ -95,7 +95,7 @@ class IntegrationTestCase(unittest.TestCase):
 
     def create_profile(self):
         profile = str(uuid.uuid4()).split('-')[0]
-        self._lxd_root['1.0'].profiles.post(json={
+        self._lxd_root.profiles.post(json={
             'name': profile,
             'config': {
                 'limits.memory': '1GB',
@@ -104,7 +104,7 @@ class IntegrationTestCase(unittest.TestCase):
         return profile
 
     def delete_profile(self, profile):
-        self._lxd_root['1.0'].profiles[profile].delete()
+        self._lxd_root.profiles[profile].delete()
 
     def assertCommon(self, response):
         """Assert common LXD responses.

@@ -19,7 +19,7 @@ from integration.testing import IntegrationTestCase
 class Test10Profiles(IntegrationTestCase):
     """Tests for /1.0/profiles"""
 
-    PARTS = ['1.0', 'profiles']
+    PARTS = ['profiles']
 
     def test_GET(self):
         """Return: a list of URLs to defined profiles."""
@@ -45,7 +45,7 @@ class Test10Profiles(IntegrationTestCase):
 class Test10Profile(IntegrationTestCase):
     """Tests for /1.0/profiles/<name>"""
 
-    PARTS = ['1.0', 'profiles']
+    PARTS = ['profiles']
 
     def setUp(self):
         super(Test10Profile, self).setUp()

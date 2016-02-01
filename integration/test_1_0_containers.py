@@ -33,13 +33,13 @@ class Test10ContainerState(ContainerTestCase):
 
     def test_GET(self):
         """Return: dict representing current state."""
-        result = self.lxd['1.0'].containers[self.name].state.get()
+        result = self.lxd.containers[self.name].state.get()
 
         self.assertEqual(200, result.status_code)
 
     def test_PUT(self):
         """Return: background operation or standard error."""
-        result = self.lxd['1.0'].containers[self.name].state.put(json={
+        result = self.lxd.containers[self.name].state.put(json={
             'action': 'freeze',
             'timeout': 30,
             })
@@ -52,7 +52,7 @@ class Test10ContainerFiles(ContainerTestCase):
 
     def test10containerfiles(self):
         """Return: dict representing current files."""
-        result = self.lxd['1.0'].containers[self.name].files.get(params={
+        result = self.lxd.containers[self.name].files.get(params={
             'path': '/bin/sh'
             })
 
@@ -60,7 +60,7 @@ class Test10ContainerFiles(ContainerTestCase):
 
     def test10containerfiles_POST(self):
         """Return: standard return value or standard error."""
-        result = self.lxd['1.0'].containers[self.name].files.get(params={
+        result = self.lxd.containers[self.name].files.get(params={
             'path': '/bin/sh'
             }, data='abcdef')
 
@@ -72,13 +72,13 @@ class Test10ContainerSnapshots(ContainerTestCase):
 
     def test10containersnapshots(self):
         """Return: list of URLs for snapshots for this container."""
-        result = self.lxd['1.0'].containers[self.name].snapshots.get()
+        result = self.lxd.containers[self.name].snapshots.get()
 
         self.assertEqual(200, result.status_code)
 
     def test10containersnapshots_POST(self):
         """Return: background operation or standard error."""
-        result = self.lxd['1.0'].containers[self.name].snapshots.post(json={
+        result = self.lxd.containers[self.name].snapshots.post(json={
             'name': 'test-snapshot',
             'stateful': False
             })
@@ -91,20 +91,20 @@ class Test10ContainerSnapshot(ContainerTestCase):
 
     def setUp(self):
         super(Test10ContainerSnapshot, self).setUp()
-        result = self.lxd['1.0'].containers[self.name].snapshots.post(json={
+        result = self.lxd.containers[self.name].snapshots.post(json={
             'name': 'test-snapshot', 'stateful': False})
         operation_uuid = result.json()['operation'].split('/')[-1]
-        result = self.lxd['1.0'].operations[operation_uuid].wait.get()
+        result = self.lxd.operations[operation_uuid].wait.get()
 
     def test10containersnapshot(self):
         """Return: dict representing the snapshot."""
-        result = self.lxd['1.0'].containers[self.name].snapshots['test-snapshot'].get()
+        result = self.lxd.containers[self.name].snapshots['test-snapshot'].get()
 
         self.assertEqual(200, result.status_code)
 
     def test10containersnapshot_POST(self):
         """Return: dict representing the snapshot."""
-        result = self.lxd['1.0'].containers[self.name].snapshots['test-snapshot'].post(json={
+        result = self.lxd.containers[self.name].snapshots['test-snapshot'].post(json={
             'name': 'test-snapshot.bak-lol'
             })
 
@@ -112,7 +112,7 @@ class Test10ContainerSnapshot(ContainerTestCase):
 
     def test10containersnapshot_DELETE(self):
         """Return: dict representing the snapshot."""
-        result = self.lxd['1.0'].containers[self.name].snapshots['test-snapshot'].delete()
+        result = self.lxd.containers[self.name].snapshots['test-snapshot'].delete()
 
         self.assertEqual(202, result.status_code)
 
@@ -123,24 +123,24 @@ class Test10ContainerExec(ContainerTestCase):
     def setUp(self):
         super(Test10ContainerExec, self).setUp()
 
-        result = self.lxd['1.0'].containers[self.name].state.put(json={
+        result = self.lxd.containers[self.name].state.put(json={
             'action': 'start', 'timeout': 30, 'force': True})
         operation_uuid = result.json()['operation'].split('/')[-1]
-        self.lxd['1.0'].operations[operation_uuid].wait.get()
+        self.lxd.operations[operation_uuid].wait.get()
         self.addCleanup(self.stop_container)
 
     def stop_container(self):
         """Stop the container (before deleting it)."""
-        result = self.lxd['1.0'].containers[self.name].state.put(json={
+        result = self.lxd.containers[self.name].state.put(json={
             'action': 'stop', 'timeout': 30, 'force': True})
         operation_uuid = result.json()['operation'].split('/')[-1]
-        self.lxd['1.0'].operations[operation_uuid].wait.get()
+        self.lxd.operations[operation_uuid].wait.get()
 
     def test10containerexec(self):
         """Return: background operation + optional websocket information.
 
         ...or standard error."""
-        result = self.lxd['1.0'].containers[self.name]['exec'].post(json={
+        result = self.lxd.containers[self.name]['exec'].post(json={
             'command': ['/bin/bash'],
             'wait-for-websocket': False,
             'interactive': True,
@@ -154,7 +154,7 @@ class Test10ContainerLogs(ContainerTestCase):
 
     def test10containerlogs(self):
         """Return: a list of the available log files."""
-        result = self.lxd['1.0'].containers[self.name].logs.get()
+        result = self.lxd.containers[self.name].logs.get()
 
         self.assertEqual(200, result.status_code)
 
@@ -164,18 +164,18 @@ class Test10ContainerLog(ContainerTestCase):
 
     def setUp(self):
         super(Test10ContainerLog, self).setUp()
-        result = self.lxd['1.0'].containers[self.name].logs.get()
+        result = self.lxd.containers[self.name].logs.get()
         self.log_name = result.json()['metadata'][0]['name']
 
     def test10containerlog(self):
         """Return: the contents of the log file."""
-        result = self.lxd['1.0'].containers[self.name].logs[self.log_name].get()
+        result = self.lxd.containers[self.name].logs[self.log_name].get()
 
         self.assertEqual(200, result.status_code)
 
     def test10containerlog_DELETE(self):
         """Return: the contents of the log file."""
-        result = self.lxd['1.0'].containers[self.name].logs[self.log_name].delete()
+        result = self.lxd.containers[self.name].logs[self.log_name].delete()
 
         self.assertEqual(200, result.status_code)
 
@@ -242,7 +242,7 @@ class TestContainer(IntegrationTestCase):
         an_container = container.Container.get(name)
 
         an_container.update({'limits.cpu': '10'}, wait=True)
-        response = self.lxd['1.0'].containers[name].get()
+        response = self.lxd.containers[name].get()
 
         self.assertEqual('10', response.json()['metadata']['config']['limits.cpu'])
 
@@ -255,7 +255,7 @@ class TestContainer(IntegrationTestCase):
 
         an_container.rename(new_name)
         self.addCleanup(self.delete_container, new_name)
-        response = self.lxd['1.0'].containers[name].get()
+        response = self.lxd.containers[name].get()
 
         self.assertEqual(200, response.status_code)
 
@@ -266,6 +266,6 @@ class TestContainer(IntegrationTestCase):
         an_container = container.Container.get(name)
 
         an_container.delete(wait=True)
-        response = self.lxd['1.0'].containers[name].get()
+        response = self.lxd.containers[name].get()
 
         self.assertEqual(404, response.status_code)

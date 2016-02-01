@@ -21,13 +21,13 @@ class Test10Images(IntegrationTestCase):
 
     def test_1_0_images(self):
         """Return: list of URLs for images this server publishes."""
-        response = self.lxd['1.0'].images.get()
+        response = self.lxd.images.get()
 
         self.assertEqual(200, response.status_code)
 
     def test_1_0_images_POST(self):
         """Return: list of URLs for images this server publishes."""
-        response = self.lxd['1.0'].images.post(json={
+        response = self.lxd.images.post(json={
             'public': True,
             'source': {
                 'type': 'url',
@@ -55,20 +55,20 @@ class Test10Image(ImageTestCase):
 
     def test_1_0_images_name(self):
         """Return: dict representing an image properties."""
-        response = self.lxd['1.0'].images[self.fingerprint].get()
+        response = self.lxd.images[self.fingerprint].get()
 
         self.assertEqual(200, response.status_code)
 
     def test_1_0_images_name_DELETE(self):
         """Return: dict representing an image properties."""
-        response = self.lxd['1.0'].images[self.fingerprint].delete()
+        response = self.lxd.images[self.fingerprint].delete()
 
         self.assertEqual(200, response.status_code)
 
     @unittest.skip("Not yet implemented in LXD")
     def test_1_0_images_name_POST(self):
         """Return: dict representing an image properties."""
-        response = self.lxd['1.0'].images[self.fingerprint].post(json={
+        response = self.lxd.images[self.fingerprint].post(json={
             'name': 'test-image'
             })
 
@@ -76,7 +76,7 @@ class Test10Image(ImageTestCase):
 
     def test_1_0_images_name_PUT(self):
         """Return: dict representing an image properties."""
-        response = self.lxd['1.0'].images[self.fingerprint].put(json={
+        response = self.lxd.images[self.fingerprint].put(json={
             'public': False
             })
 
@@ -88,7 +88,7 @@ class Test10ImageExport(ImageTestCase):
 
     def test_1_0_images_export(self):
         """Return: dict representing an image properties."""
-        response = self.lxd['1.0'].images[self.fingerprint].export.get()
+        response = self.lxd.images[self.fingerprint].export.get()
 
         self.assertEqual(200, response.status_code)
 
@@ -98,7 +98,7 @@ class Test10ImageSecret(ImageTestCase):
 
     def test_1_0_images_secret(self):
         """Return: dict representing an image properties."""
-        response = self.lxd['1.0'].images[self.fingerprint].secret.post({
+        response = self.lxd.images[self.fingerprint].secret.post({
             'name': 'abcdef'
             })
 
@@ -110,7 +110,7 @@ class Test10ImageAliases(IntegrationTestCase):
 
     def test_1_0_images_aliases(self):
         """Return: list of URLs for images this server publishes."""
-        response = self.lxd['1.0'].images.aliases.get()
+        response = self.lxd.images.aliases.get()
 
         self.assertEqual(200, response.status_code)
 
@@ -119,7 +119,7 @@ class Test10ImageAliases(IntegrationTestCase):
         fingerprint = self.create_image()
         alias = 'test-alias'
         self.addCleanup(self.delete_image, alias)
-        response = self.lxd['1.0'].images.aliases.post(json={
+        response = self.lxd.images.aliases.post(json={
             'target': fingerprint,
             'name': alias
             })
@@ -136,7 +136,7 @@ class Test10ImageAlias(ImageTestCase):
 
     def test_GET(self):
         """Return: dict representing an alias description or target."""
-        response = self.lxd['1.0'].images.aliases[self.alias].get()
+        response = self.lxd.images.aliases[self.alias].get()
 
         self.assertEqual(200, response.status_code)
 
@@ -145,7 +145,7 @@ class Test10ImageAlias(ImageTestCase):
         """Return: dict representing an alias description or target."""
         self.create_alias(self.fingerprint)
 
-        response = self.lxd['1.0'].images.aliases[self.alias].put(json={
+        response = self.lxd.images.aliases[self.alias].put(json={
             'description': 'An container alias',
             'target': self.fingerprint
             })
@@ -157,7 +157,7 @@ class Test10ImageAlias(ImageTestCase):
         """Return: dict representing an alias description or target."""
         self.create_alias(self.fingerprint)
 
-        response = self.lxd['1.0'].images.aliases[self.alias].post(json={
+        response = self.lxd.images.aliases[self.alias].post(json={
             'name': self.alias[:-1]
             })
 
@@ -167,6 +167,6 @@ class Test10ImageAlias(ImageTestCase):
         """Return: dict representing an alias description or target."""
         self.create_alias(self.fingerprint)
 
-        response = self.lxd['1.0'].images.aliases[self.alias].delete()
+        response = self.lxd.images.aliases[self.alias].delete()
 
         self.assertEqual(200, response.status_code)
