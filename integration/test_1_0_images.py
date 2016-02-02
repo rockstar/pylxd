@@ -13,17 +13,13 @@
 #    under the License.
 import unittest
 
+from pylxd.image import Image
+
 from integration.testing import IntegrationTestCase
 
 
 class Test10Images(IntegrationTestCase):
     """Tests for /1.0/images"""
-
-    def test_1_0_images(self):
-        """Return: list of URLs for images this server publishes."""
-        response = self.lxd.images.get()
-
-        self.assertEqual(200, response.status_code)
 
     def test_1_0_images_POST(self):
         """Return: list of URLs for images this server publishes."""
@@ -52,18 +48,6 @@ class ImageTestCase(IntegrationTestCase):
 
 class Test10Image(ImageTestCase):
     """Tests for /1.0/images/<fingerprint>."""
-
-    def test_1_0_images_name(self):
-        """Return: dict representing an image properties."""
-        response = self.lxd.images[self.fingerprint].get()
-
-        self.assertEqual(200, response.status_code)
-
-    def test_1_0_images_name_DELETE(self):
-        """Return: dict representing an image properties."""
-        response = self.lxd.images[self.fingerprint].delete()
-
-        self.assertEqual(200, response.status_code)
 
     @unittest.skip("Not yet implemented in LXD")
     def test_1_0_images_name_POST(self):
@@ -170,3 +154,78 @@ class Test10ImageAlias(ImageTestCase):
         response = self.lxd.images.aliases[self.alias].delete()
 
         self.assertEqual(200, response.status_code)
+
+
+class TestImage(IntegrationTestCase):
+    """Tests for pylxd.image.Image."""
+
+    def test_get_all(self):
+        """Returns a list of all images."""
+        fingerprint = self.create_image()
+        self.addCleanup(self.delete_image, fingerprint)
+
+        images = Image.get_all()
+
+        self.assertIn(fingerprint, [i.fingerprint for i in images])
+
+    def test_get(self):
+        """Returns an Image by its fingerprint."""
+        fingerprint = self.create_image()
+        self.addCleanup(self.delete_image, fingerprint)
+
+        image = Image.get(fingerprint)
+
+        self.assertEqual(fingerprint, image.fingerprint)
+        self.assertEqual(
+            [{'description': 'testget',
+              'target': 'testget'}],
+            image.aliases)
+        self.assertEqual(2, image.architecture)
+        self.assertIsNotNone(image.created_at)
+        self.assertEqual(0, image.expires_at)
+        self.assertEqual('', image.filename)
+        self.assertEqual(1, image.public)
+        self.assertEqual(
+            ['architecture', 'description', 'name', 'obfuscate', 'os'],
+            sorted(image.properties.keys()))
+        self.assertIsNotNone(image.size)
+        self.assertIsNotNone(image.uploaded_at)
+
+    def test_get_by_alias(self):
+        """Returns an Image by its alias."""
+        fingerprint, alias = self.create_image(return_alias=True)
+        self.addCleanup(self.delete_image, fingerprint)
+
+        image = Image.get_by_alias(alias)
+
+        self.assertEqual(fingerprint, image.fingerprint)
+
+    def test_create(self):
+        """Creates an Image."""
+
+    def test_update(self):
+        """Updates an Image."""
+        fingerprint = self.create_image()
+        self.addCleanup(self.delete_container, fingerprint)
+        image = Image.get(fingerprint)
+
+        image.update({})
+
+    def test_rename(self):
+        """Renames an existing Image."""
+        fingerprint = self.create_image()
+        self.addCleanup(self.delete_container, fingerprint)
+        image = Image.get(fingerprint)
+
+        image.rename()
+
+    def test_delete(self):
+        """Deletes an Image."""
+        fingerprint = self.create_image()
+        self.addCleanup(self.delete_container, fingerprint)
+        image = Image.get(fingerprint)
+
+        image.delete()
+        response = self.lxd.images[fingerprint].get()
+
+        self.assertEqual(404, response.status_code)

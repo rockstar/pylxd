@@ -241,3 +241,57 @@ class LXDAlias(base.LXDBase):
     def alias_delete(self, alias):
         return self.connection.get_status('DELETE', '/1.0/images/aliases/%s'
                                           % alias)
+
+_lxd = connection.LXD()
+
+
+class Image(object):
+    """A LXD Image object."""
+
+    __slots__ = [
+        'aliases', 'architecture', 'created_at', 'expires_at', 'filename',
+        'fingerprint', 'public', 'properties', 'size', 'uploaded_at']
+
+    @classmethod
+    def get(cls, fingerprint):
+        """Get an image by fingerprint."""
+        response = _lxd.images[fingerprint].get()
+
+        image = cls()
+        for key, value in response.json()['metadata'].iteritems():
+            setattr(image, key, value)
+        return image
+
+    @classmethod
+    def get_by_alias(cls, alias):
+        """Get an image by its alias."""
+        response = _lxd.images.aliases[alias].get()
+
+        fingerprint = response.json()['metadata']['target']
+        return cls.get(fingerprint)
+
+    @classmethod
+    def get_all(cls):
+        """Get all images on an LXD host as Image objects."""
+        response = _lxd.images.get()
+
+        images = []
+        for name in response.json()['metadata']:
+            image = cls()
+            image.fingerprint = name.split('/')[-1]
+            images.append(image)
+        return images
+
+    @classmethod
+    def create(cls, name):
+        """Create a new Image."""
+
+    def update(self):
+        """Update an Image."""
+
+    def rename(self):
+        """Rename an Image."""
+
+    def delete(self):
+        """Delete an Image."""
+        _lxd.images[self.fingerprint].delete()

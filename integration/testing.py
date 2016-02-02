@@ -64,7 +64,7 @@ class IntegrationTestCase(unittest.TestCase):
         except KeyError:
             pass  # 404 cases are okay.
 
-    def create_image(self):
+    def create_image(self, return_alias=False):
         """Create an image in lxd."""
         path, fingerprint = create_busybox_image()
         with open(path, 'rb') as f:
@@ -75,7 +75,11 @@ class IntegrationTestCase(unittest.TestCase):
         operation_uuid = response.json()['operation'].split('/')[-1]
         self._lxd_root.operations[operation_uuid].wait.get()
 
+        alias = self.create_alias(fingerprint)
+
         self.addCleanup(self.delete_image, fingerprint)
+        if return_alias:
+            return fingerprint, alias
         return fingerprint
 
     def delete_image(self, fingerprint):
@@ -86,7 +90,7 @@ class IntegrationTestCase(unittest.TestCase):
         # XXX: rockstar (31 Jan 2016) - it's possible we'll have to delete these,
         # thaugh if the image deletion doesn't also delete aliases, that would
         # be very odd indeed.
-        alias = str(uuid.uuid4()).split('-')[0]
+        alias = self.id().split('.')[-1].replace('_', '')
         self._lxd_root.images.aliases.post(json={
             'target': fingerprint,
             'name': alias
