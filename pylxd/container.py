@@ -15,6 +15,7 @@ import copy
 import json
 
 from pylxd import base
+from pylxd import connection
 from pylxd import exceptions
 
 
@@ -205,14 +206,13 @@ class LXDContainer(base.LXDBase):
                                           '/1.0/containers/%s/snapshots/%s'
                                           % (container, snapshot))
 
+_lxd = connection.LXD()
+
 
 def wait_for_operation(operation):
     """Wait for an asynchronous operation to complete."""
-    from pylxd.connection import LXD  # Circular imports...
-    lxd = LXD()
-
     operation_uuid = operation.split('/')[-1]
-    lxd.operations[operation_uuid].wait.get()
+    _lxd.operations[operation_uuid].wait.get()
 
 
 class Container(object):
@@ -226,11 +226,9 @@ class Container(object):
     @classmethod
     def get(cls, name):
         """Get a container by its container name."""
-        from pylxd.connection import LXD  # Circular imports...
-        lxd = LXD()
-        response = lxd.containers[name].get()
+        response = _lxd.containers[name].get()
 
-        container = Container()
+        container = cls()
         for key, value in response.json()['metadata'].iteritems():
             setattr(container, key, value)
         return container
@@ -238,13 +236,11 @@ class Container(object):
     @classmethod
     def get_all(cls):
         """Get all containers on a LXD host as Container objects."""
-        from pylxd.connection import LXD  # Circular imports...
-        lxd = LXD()
-        response = lxd.containers.get()
+        response = _lxd.containers.get()
 
         containers = []
         for name in response.json()['metadata']:
-            container = Container()
+            container = cls()
             container.name = name.split('/')[-1]
             containers.append(container)
 
@@ -253,20 +249,17 @@ class Container(object):
     @classmethod
     def create(cls, name, build_options):
         """Create a new Container."""
-        from pylxd.connection import LXD  # Circular imports...
-        lxd = LXD()
         options = copy.deepcopy(build_options)
         options['name'] = name
-        lxd.containers.post(json=options)
+
+        _lxd.containers.post(json=options)
 
         container = cls.get(name)
         return container
 
     def update(self, config, wait=False):
         """Update a Container config."""
-        from pylxd.connection import LXD  # Circular imports...
-        lxd = LXD()
-        response = lxd.containers[self.name].put(json={'config': config})
+        response = _lxd.containers[self.name].put(json={'config': config})
 
         if wait:
             wait_for_operation(response.json()['operation'])
@@ -274,16 +267,12 @@ class Container(object):
 
     def rename(self, name):
         """Rename a Container."""
-        from pylxd.connection import LXD  # Circular imports...
-        lxd = LXD()
-        lxd.containers[self.name].put(json={'name': name})
+        _lxd.containers[self.name].put(json={'name': name})
         self.name = name
 
     def delete(self, wait=False):
         """Delete the container."""
-        from pylxd.connection import LXD  # Circular imports...
-        lxd = LXD()
-        response = lxd.containers[self.name].delete()
+        response = _lxd.containers[self.name].delete()
 
         if wait:
             wait_for_operation(response.json()['operation'])
